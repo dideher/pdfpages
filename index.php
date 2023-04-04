@@ -21,22 +21,24 @@ if (!isset($_POST['afm']))
 {
     ?>
 	<center>
-	<h2><?= APP_DNSI ?>
-		<br><?= TITLE ?></h2>
+	<br>
+	<h2><?= APP_DNSI ?></h2>
+		<h3><?= TITLE ?></h3>
 		<h4><?= SUB_TITLE ?></h4>
+		* Οι βεβαιώσεις αποδοχών των Αναπληρωτών ΕΣΠΑ και ΠΔΕ έχουν σταλεί στους εκπαιδευτικούς με μήνυμα ηλεκτρονική αλληλογραφίας (mail) μέσω της εφαρμογής του ΥΠΑΙΘ.
 		<br>
 		<br>
 	<?php
 	echo "<form name='login' method='post' id='login' action='' autocomplete='off'>
 	<table>
-	<tr><td><label for='afm'>Α.Μ. Εκπ/κού</label></td>
-	<td><input name='am' id='am' type='text' required></td></tr>
-	<tr><td><label for='afm'>Α.Φ.Μ. Εκπ/κού</label></td>
-	<td><input name='afm' id='afm' type='password' required></td></tr>
-	<tr><td colspan=2><center><input name='submit' id='submit' value='Είσοδος' type='submit'></center></td></tr></table>
+	<tr><td><label for='afm'>ΑΦΜ Εκπαιδευτικού</label></td>
+	<td><input name='afm' id='afm' type='text' required></td></tr>
+	<tr><td><label for='amka'>ΑΜKA Εκπαιδευτικού</label></td>
+	<td><input name='amka' id='amka' type='text' required></td></tr>
+	<tr><td colspan=2><br><center><input name='submit' id='submit' value='Λήψη' type='submit'></center></td></tr></table>
 	</form>";
 	echo "<br><br>";
-	echo "<small>(c) Δ/νση Π.Ε. Ηρακλείου - Τμήμα Μηχανογράφησης</small>";
+	echo "<small>(c) Δ/νση Δ.Ε. Ηρακλείου - Τμήμα Πληροφορικής και Νέων Τεχνολογιών</small>";
 	echo "</center>";
 }
 else
@@ -45,35 +47,33 @@ else
 	
 	// check if files exist...
 	if (!file_exists('data/'.EMPLOYEE_FILENAME))
-		die('Σφάλμα: Το αρχείο υπαλλήλων δε βρέθηκε.');
+		die('Σφάλμα: Το αρχείο υπαλλήλων δεν βρέθηκε.');
 	elseif (!file_exists('data/'.VEV_FILENAME))
-		die('Σφάλμα: Το αρχείο βεβαιώσεων δε βρέθηκε.');
+		die('Σφάλμα: Το αρχείο βεβαιώσεων δεν βρέθηκε.');
 	
-	if (!strlen($_POST['am']) || !strlen($_POST['afm'])){
+	if (!strlen($_POST['amka']) || !strlen($_POST['afm'])){
 		$emptyForm = 1;
 	}
 	else {
 		$afm = $_POST['afm'];
-		if (substr($afm,0,1) == '0')
-			$short_afm = substr($afm,1,8);
-		$am = $_POST['am'];
+		$amka = $_POST['amka'];
 		
 		// use ParseCSV to find employee in csv file
 		$csvFile = 'data/' . EMPLOYEE_FILENAME;
 
 		$csv = new \ParseCsv\Csv();
 		$csv->delimiter = ";";
-		// find employee using AFM & AM
-		$condition = 'afm is '.$afm.' AND am is '.$am;
+		// find employee using AFM & AMKA
+		$condition = 'afm is '.$afm.' AND amka is '.$amka;
 		$csv->conditions = $condition;
-		$csv->parse($csvFile);
+		$csv->parseFile($csvFile);
 		$parsed = $csv->data;
 	}
     // if employee not found or empty form
 	if ((isset($parsed) && !count($parsed)) || $emptyForm)
     {
-		echo "H είσοδος με ΑΦΜ: $afm & ΑΜ: $am απέτυχε...";
-		echo "<br>Δοκιμάστε ξανά με έναν έγκυρο συνδυασμό Α.Φ.Μ. - Α.Μ";
+		echo "H είσοδος με ΑΦΜ: $afm & ΑΜKA: $amka απέτυχε...";
+		echo "<br>Δοκιμάστε ξανά με έναν έγκυρο συνδυασμό ΑΦΜ - ΑΜKA";
 		echo "<FORM><INPUT Type='button' VALUE='Επιστροφή' onClick='history.go(-1);return true;'></FORM>";
 	}
 	else
@@ -89,16 +89,17 @@ else
 		// FPDI lib is used. File must be PDF/A (v.1.4)
 		//initiate FPDI
 		
-		$pdf = new Fpdi();
+		$pdf = new FPDI();
+		$fn = "./data/".VEV_FILENAME;
+		$pdf->setSourceFile($fn);
+
 		foreach ($pages as $page)
 		{
-			//add a page (L for Landscape page orientation)
-			$pdf->AddPage(L);
-			//set the source file
-			$fn = "./data/".VEV_FILENAME;
-			$pdf->setSourceFile($fn);
 			//import page
 			$tplIdx = $pdf->importPage($page);
+			$size = $pdf->getTemplateSize($tplIdx);
+			$pdf->addPage($size['orientation'], $size);	
+
 			//use the imported page 
 			$pdf->useTemplate($tplIdx);
 		}
